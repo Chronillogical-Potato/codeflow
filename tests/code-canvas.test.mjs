@@ -2089,6 +2089,31 @@ test('index.html ships a working Code view, not a stub', () => {
   assert.match(htmlSource, /className:'code-view-prefs-row'/);
   assert.match(htmlSource, /Load Files/);
   assert.match(htmlSource, /persistCodeViewRootGate\(n\)/);
+  assert.match(htmlSource, /'aria-label':'Named groups'/);
+  assert.match(htmlSource, /New Group/);
+  assert.match(htmlSource, /function createCodeNamedGroup\(/);
+  assert.match(htmlSource, /function renameCodeNamedGroup\(/);
+  assert.match(htmlSource, /function deleteCodeNamedGroup\(/);
+  assert.match(htmlSource, /function assignCardNamedGroup\(/);
+  assert.match(htmlSource, /function beginNamedGroupDrag\(/);
+  assert.match(htmlSource, /function partitionCodeViewHullMembers\(/);
+  assert.match(htmlSource, /function namedGroupDropRemovesCard\(/);
+  assert.match(htmlSource, /function namedGroupLeaveHull\(/);
+  assert.match(htmlSource, /namedGroupDropRemovesCard\(cardWorldBox\(node,codeCardSizesRef\.current,null\),otherBoxes,28,startMemberBoxes\)/);
+  assert.match(htmlSource, /function submitNamedGroupNameDialog\(/);
+  assert.match(htmlSource, /function closeNamedGroupNameDialog\(/);
+  assert.match(htmlSource, /function namedGroupViewportCenter\(/);
+  assert.match(htmlSource, /function namedGroupPlaceholderBounds\(/);
+  assert.match(htmlSource, /namedGroupNameDialog/);
+  assert.match(htmlSource, /named-group-name-modal/);
+  assert.match(htmlSource, /Name this group/);
+  assert.match(htmlSource, /code-card-group-select/);
+  assert.match(htmlSource, /data-named-group/);
+  assert.match(htmlSource, /stroke-dasharray','6 4'/);
+  assert.doesNotMatch(htmlSource, /function promptNamedGroupName\(/);
+  assert.doesNotMatch(htmlSource, /function requestNamedGroupName\(/);
+  assert.doesNotMatch(htmlSource, /host\.prompt/);
+  assert.doesNotMatch(htmlSource, /window\.prompt/);
   assert.doesNotMatch(htmlSource, /className:'code-view-gate-select'/);
   assert.doesNotMatch(htmlSource, /code-view-prefs[\s\S]{0,400}createElement\('select'/);
   assert.match(htmlSource, /Pick a folder or file/);
@@ -2166,7 +2191,7 @@ test('index.html ships a working Code view, not a stub', () => {
   assert.match(htmlSource, /readCodeCardWorldBoxes\(codeCardsLayerRef\.current\)/);
   assert.match(htmlSource, /codeFolderHullBounds\(cardNodes,leftover/);
   assert.match(htmlSource, /if\(updateHullsRef\.current\)updateHullsRef\.current\(\)/);
-  assert.match(htmlSource, /codeViewExpand,codeViewWrap,cliLiveByPath/);
+  assert.match(htmlSource, /codeViewExpand,codeViewWrap,cliLiveByPath\]/);
   assert.match(htmlSource, /cardSize\.expand\?' expand'/);
   assert.match(htmlSource, /cardSize\.wrap\?' wrap'/);
   assert.match(htmlSource, /\.code-card\.wrap \.file-preview-text/);
@@ -2454,6 +2479,54 @@ test('line thickness defaults match current graph edges and stay in range', () =
   assert.ok(selected > idle);
 });
 
+test('3D selected-file links animate; idle and reduced-motion stay static', () => {
+  const outLink = { count: 1, source: 'src/app.js', target: 'src/math.js' };
+  const inLink = { count: 2, source: { id: 'src/boot.js' }, target: { id: 'src/app.js' } };
+  const other = { count: 1, source: 'src/a.js', target: 'src/b.js' };
+  const opts = { theme: 'dark', thickness: 2, reducedMotion: false };
+
+  const outgoing = context.graph3dLinkParticles(outLink, 'src/app.js', opts);
+  const incoming = context.graph3dLinkParticles(inLink, 'src/app.js', opts);
+  const quiet = context.graph3dLinkParticles(other, 'src/app.js', opts);
+  const idle = context.graph3dLinkParticles(outLink, null, opts);
+  const reduced = context.graph3dLinkParticles(outLink, 'src/app.js', Object.assign({}, opts, { reducedMotion: true }));
+  const twoD = context.forceLinkVisual(outLink, 'src/app.js', opts);
+
+  assert.equal(outgoing.count, context.GRAPH3D_LINK_PARTICLE_COUNT);
+  assert.equal(outgoing.speed, context.GRAPH3D_LINK_PARTICLE_SPEED);
+  assert.equal(outgoing.count, 2);
+  assert.ok(outgoing.speed > 0 && outgoing.speed <= 0.01);
+  assert.ok(outgoing.width > 0);
+  assert.equal(outgoing.role, 'out');
+  assert.equal(outgoing.color, context.graph3dResolveLinkColor(twoD.stroke));
+  assert.equal(outgoing.color, '#ff9f43');
+  assert.equal(outgoing.stroke, '#ff9f43');
+  assert.equal(incoming.count, outgoing.count);
+  assert.equal(incoming.role, 'in');
+  assert.equal(incoming.color, '#a78bfa');
+  assert.equal(incoming.stroke, '#a78bfa');
+  assert.notEqual(outgoing.color, incoming.color);
+  assert.equal(quiet.count, 0);
+  assert.equal(quiet.speed, 0);
+  assert.equal(quiet.width, 0);
+  assert.equal(quiet.role, 'quiet');
+  assert.equal(idle.count, 0);
+  assert.equal(idle.speed, 0);
+  assert.equal(idle.width, 0);
+  assert.equal(idle.role, 'idle');
+  assert.equal(reduced.count, 0);
+  assert.equal(reduced.speed, 0);
+  assert.equal(reduced.width, 0);
+  assert.equal(reduced.role, 'out');
+  assert.equal(reduced.stroke, outgoing.stroke);
+
+  const thin = context.graph3dLinkParticles(outLink, 'src/app.js', { thickness: 1, reducedMotion: false });
+  const thick = context.graph3dLinkParticles(outLink, 'src/app.js', { thickness: 6, reducedMotion: false });
+  assert.ok(thick.width > thin.width);
+  assert.equal(context.graph3dResolveLinkColor('var(--orange)'), '#ff9f43');
+  assert.equal(context.graph3dResolveLinkColor('var(--purple)'), '#a78bfa');
+});
+
 test('selected Code-view links animate; inactive stay quiet; reduced-motion is static', () => {
   const outLink = { count: 1, source: 'src/app.js', target: 'src/math.js' };
   const inLink = { count: 2, source: { id: 'src/boot.js' }, target: { id: 'src/app.js' } };
@@ -2558,7 +2631,7 @@ test('selected Code-view links animate; inactive stay quiet; reduced-motion is s
 test('reduced-motion changes reapply Code particles; Graph keeps static accent', () => {
   assert.equal(context.vizUsesForceLinkParticles('code'), true);
   assert.equal(context.vizUsesForceLinkParticles('graph'), false);
-  assert.equal(context.vizUsesForceLinkParticles('graph3d'), false);
+  assert.equal(context.vizUsesForceLinkParticles('graph3d'), false, '3D uses graph3dLinkParticles, not the SVG particle layer');
 
   const outLink = { count: 1, source: 'src/app.js', target: 'src/math.js' };
   const codeOpts = { theme: 'dark', thickness: 2, reducedMotion: false, vizType: 'code' };
@@ -2617,6 +2690,10 @@ test('reduced-motion changes reapply Code particles; Graph keeps static accent',
   assert.match(htmlSource, /applyForceLinkVisualsRef\.current=applyForceLinkVisuals/);
   assert.match(htmlSource, /subscribePrefersReducedMotion\(function\(\)\{/);
   assert.match(htmlSource, /if\(applyForceLinkVisualsRef\.current\)applyForceLinkVisualsRef\.current\(\)/);
+  assert.match(htmlSource, /if\(applyLinkThicknessRef\.current\)applyLinkThicknessRef\.current\(\)/);
+  assert.match(htmlSource, /applyLinkThicknessRef\.current=applyLinkThickness/);
+  assert.match(htmlSource, /graph3dLinkParticles\(link,selected&&selected\.path,particleOpts\)\.count/);
+  assert.match(htmlSource, /g3\.linkDirectionalParticles\(function\(link\)\{return graph3dLinkParticles/);
   assert.match(htmlSource, /vizType:graphConfig\.vizType/);
   assert.match(htmlSource, /if\(vizUsesForceLinkParticles\(graphConfig\.vizType\)\)queueForceLinkVisuals\(\)/);
   assert.match(htmlSource, /var particleLayer=keepReadable\?container\.append\('g'\)\.attr\('class','force-link-particles'/);
@@ -2711,4 +2788,180 @@ test('UI prefs keep the default when localStorage access throws', () => {
   } finally {
     delete context.window;
   }
+});
+
+test('named groups create, rename, delete, and keep exclusive card membership', () => {
+  assert.equal(context.normalizeNamedGroupName('  Auth  flow  '), 'Auth flow');
+  assert.equal(context.normalizeNamedGroupName('x'.repeat(40)).length, context.NAMED_GROUP_NAME_MAX);
+  assert.equal(context.normalizeNamedGroupName('   '), '');
+  const empty = context.createNamedGroup([], '   ');
+  assert.equal(empty.group, null);
+  const made = context.createNamedGroup([], 'Auth', 'g-auth', { x: 50, y: 80 });
+  assert.equal(made.group.id, 'g-auth');
+  assert.equal(made.group.paths.length, 0);
+  assert.equal(made.group.x, 50);
+  assert.equal(made.group.y, 80);
+  let groups = context.addCardToNamedGroup(made.groups, 'g-auth', 'src/a.js');
+  groups = context.addCardToNamedGroup(groups, 'g-auth', 'src/b.js');
+  groups = context.createNamedGroup(groups, 'UI', 'g-ui').groups;
+  groups = context.addCardToNamedGroup(groups, 'g-ui', 'src/a.js');
+  assert.deepEqual(J(context.namedGroupById(groups, 'g-auth').paths), ['src/b.js']);
+  assert.deepEqual(J(context.namedGroupById(groups, 'g-ui').paths), ['src/a.js']);
+  assert.equal(context.namedGroupIdForPath(groups, 'src/a.js'), 'g-ui');
+  assert.equal(context.namedGroupById(groups, 'g-auth').x, 50);
+  assert.equal(context.namedGroupById(groups, 'g-auth').y, 80);
+  groups = context.setCardNamedGroup(groups, 'src/a.js', '');
+  assert.equal(context.namedGroupIdForPath(groups, 'src/a.js'), null);
+  groups = context.renameNamedGroup(groups, 'g-auth', 'Session');
+  assert.equal(context.namedGroupById(groups, 'g-auth').name, 'Session');
+  assert.equal(context.namedGroupById(groups, 'g-auth').x, 50);
+  groups = context.setNamedGroupOrigin(groups, 'g-auth', { x: 12, y: -4 });
+  assert.equal(context.namedGroupById(groups, 'g-auth').x, 12);
+  assert.equal(context.namedGroupById(groups, 'g-auth').y, -4);
+  groups = context.deleteNamedGroup(groups, 'g-ui');
+  assert.equal(context.namedGroupById(groups, 'g-ui'), null);
+});
+
+test('named groups use an in-app name dialog and land in the current viewport', () => {
+  assert.equal(typeof context.promptNamedGroupName, 'undefined');
+  const center = context.namedGroupViewportCenter({ k: 2, x: -200, y: -100 }, 400, 200);
+  assert.equal(center.x, 200);
+  assert.equal(center.y, 100);
+  const bounds = context.namedGroupPlaceholderBounds({ x: 10, y: 20 }, 280, 160);
+  assert.equal(bounds.x, -130);
+  assert.equal(bounds.y, -60);
+  assert.equal(bounds.width, 280);
+  assert.equal(bounds.height, 160);
+  assert.equal(context.namedGroupPlaceholderBounds({}, 280, 160), null);
+  const viewport = { x: 0, y: 0, width: 800, height: 600 };
+  assert.equal(context.namedGroupNeedsViewportPlacement([], viewport), true);
+  assert.equal(context.namedGroupNeedsViewportPlacement([{ x: 100, y: 100, width: 200, height: 120 }], viewport), false);
+  assert.equal(context.namedGroupNeedsViewportPlacement([{ x: 2000, y: 2000, width: 200, height: 120 }], viewport), true);
+  const nodes = [
+    { id: 'src/a.js', x: 0, y: 0 },
+    { id: 'src/b.js', x: 100, y: 0 }
+  ];
+  const moved = context.placeNodesAtNamedGroupOrigin(nodes, ['src/a.js', 'src/b.js'], { x: 500, y: 40 });
+  assert.equal(moved.length, 2);
+  assert.equal(nodes[0].x, 450);
+  assert.equal(nodes[1].x, 550);
+  assert.equal(nodes[0].y, 40);
+  assert.equal(nodes[1].y, 40);
+  const emptyNamed = context.partitionCodeViewHullMembers(
+    [],
+    new Set(),
+    [{ id: 'g-empty', name: 'Core', paths: [], x: 300, y: 150 }]
+  );
+  const emptyHulls = context.namedGroupHullsFromMembers(emptyNamed.named, {}, 10);
+  assert.equal(emptyHulls.length, 1);
+  assert.equal(emptyHulls[0].placeholder, true);
+  assert.equal(emptyHulls[0].name, 'Core');
+  assert.ok(emptyHulls[0].x < 300 && emptyHulls[0].x + emptyHulls[0].width > 300);
+  assert.ok(emptyHulls[0].y < 150 && emptyHulls[0].y + emptyHulls[0].height > 150);
+  const content = context.collectMinimapContent(
+    [],
+    {},
+    new Set(),
+    () => '#4d9fff',
+    0,
+    [{ id: 'g-empty', name: 'Core', paths: [], x: 300, y: 150 }]
+  );
+  assert.equal(content.hulls.some((h) => h.kind === 'named' && h.id === 'g-empty'), true);
+});
+
+test('named-group hulls win over directory hulls and drop only when dragged out', () => {
+  const groups = [
+    { id: 'g1', name: 'Auth', paths: ['src/a.js', 'lib/c.js'] }
+  ];
+  const nodes = [
+    { id: 'src/a.js', folder: 'src', x: 200, y: 200 },
+    { id: 'src/b.js', folder: 'src', x: 800, y: 200 },
+    { id: 'lib/c.js', folder: 'lib', x: 200, y: 700 },
+    { id: 'src/left.js', folder: 'src', x: 1200, y: 200 }
+  ];
+  const cards = new Set(['src/a.js', 'src/b.js', 'lib/c.js']);
+  const part = context.partitionCodeViewHullMembers(nodes, cards, groups);
+  assert.equal(part.named.g1.cards.map((n) => n.id).sort().join(','), 'lib/c.js,src/a.js');
+  assert.equal(part.folders.src.cards.length, 1);
+  assert.equal(part.folders.src.cards[0].id, 'src/b.js');
+  assert.equal(part.folders.lib, undefined);
+  assert.equal(part.folders.src.leftover[0].id, 'src/left.js');
+  const sizes = {
+    'src/a.js': { width: 200, height: 120 },
+    'src/b.js': { width: 200, height: 120 },
+    'lib/c.js': { width: 200, height: 120 }
+  };
+  const namedHulls = context.namedGroupHullsFromMembers(part.named, sizes, 10);
+  assert.equal(namedHulls.length, 1);
+  assert.equal(namedHulls[0].name, 'Auth');
+  assert.ok(namedHulls[0].height > 400);
+  const dirHulls = context.codeFolderHullsByFolder(part.folders, sizes, 10);
+  assert.ok(dirHulls.src);
+  assert.equal(dirHulls.lib == null, true);
+  const stay = context.namedGroupDropRemovesCard(
+    { x: 160, y: 150, width: 200, height: 120 },
+    [{ x: 100, y: 140, width: 200, height: 120 }],
+    10
+  );
+  assert.equal(stay, false);
+  const leave = context.namedGroupDropRemovesCard(
+    { x: 1400, y: 900, width: 200, height: 120 },
+    [{ x: 100, y: 140, width: 200, height: 120 }],
+    10
+  );
+  assert.equal(leave, true);
+  assert.equal(context.namedGroupDropRemovesCard({ x: 10, y: 10, width: 40, height: 40 }, [], 10), false);
+  const lastStart = [{ x: 10, y: 10, width: 40, height: 40 }];
+  assert.equal(context.namedGroupDropRemovesCard({ x: 10, y: 10, width: 40, height: 40 }, [], 10, lastStart), false);
+  assert.equal(context.namedGroupDropRemovesCard({ x: 400, y: 10, width: 40, height: 40 }, [], 10, lastStart), true);
+  assert.equal(context.namedGroupLeaveHull([], 10, lastStart).width > 40, true);
+  const moved = context.translateNamedGroupCards(nodes, ['src/a.js', 'lib/c.js'], 40, -15);
+  assert.equal(moved.length, 2);
+  assert.equal(nodes[0].x, 240);
+  assert.equal(nodes[2].y, 685);
+  assert.equal(nodes[1].x, 800);
+  const hullEl = { setAttribute(name, value) { this[name] = value; } };
+  const root = { querySelector: () => hullEl };
+  assert.equal(context.applyNamedGroupHullFrame(root, 'g1', 12, 8), true);
+  assert.equal(hullEl.transform, 'translate(12,8)');
+});
+
+test('named groups persist per analysis session in localStorage', () => {
+  const storage = memoryStorage();
+  const key = context.namedGroupsSessionKey('github', 'owner/repo');
+  assert.equal(key, 'github:owner/repo');
+  const written = context.writeNamedGroupsForSession(storage, key, [
+    { id: 'g1', name: ' Auth ', paths: ['src/a.js', 'src/a.js', ''], x: 120, y: -40 }
+  ]);
+  assert.equal(written[0].name, 'Auth');
+  assert.deepEqual(J(written[0].paths), ['src/a.js']);
+  assert.equal(written[0].x, 120);
+  assert.equal(written[0].y, -40);
+  assert.deepEqual(J(context.readNamedGroupsForSession(storage, key)), J(written));
+  assert.deepEqual(J(context.readNamedGroupsForSession(storage, 'github:other/repo')), []);
+  assert.deepEqual(J(context.readNamedGroupsForSession(storage, '')), []);
+  storage.setItem(context.NAMED_GROUPS_STORAGE_KEY, '{not-json');
+  assert.deepEqual(J(context.readNamedGroupsForSession(storage, key)), []);
+  context.window = throwingLocalStorageWindow();
+  try {
+    assert.doesNotThrow(() => context.readNamedGroupsForSession(undefined, key));
+    assert.deepEqual(J(context.writeNamedGroupsForSession(undefined, key, [{ id: 'g2', name: 'UI', paths: [] }])), [
+      { id: 'g2', name: 'UI', paths: [] }
+    ]);
+  } finally {
+    delete context.window;
+  }
+  const content = context.collectMinimapContent(
+    [
+      { id: 'src/a.js', folder: 'src', x: 0, y: 0 },
+      { id: 'src/b.js', folder: 'src', x: 400, y: 0 }
+    ],
+    { 'src/a.js': { width: 200, height: 100 }, 'src/b.js': { width: 200, height: 100 } },
+    new Set(['src/a.js', 'src/b.js']),
+    () => '#4d9fff',
+    0,
+    [{ id: 'g1', name: 'Auth', paths: ['src/a.js'] }]
+  );
+  assert.equal(content.hulls.some((h) => h.kind === 'named'), true);
+  assert.equal(content.hulls.some((h) => h.folder === 'src'), true);
 });
