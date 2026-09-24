@@ -1,0 +1,25 @@
+
+@font-face {
+  font-family: 'Fira Code Nerd Font Propo';
+  src: url('fonts/FiraCodeNerdFontPropo-Retina.ttf') format('truetype');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Fira Code Nerd Font Mono';
+  src: url('fonts/FiraCodeNerdFontMono-Retina.ttf') format('truetype');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Geist Pixel Line';
+  src: url('fonts/GeistPixel-Line.otf') format('opentype');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+html, body {
+  font-family: 'Fira Code Nerd Font Propo', system-ui, sans-serif;
+}
+code, pre, .mono, .tree-folder, .repo-input {
+  font-family: 'Fira Code Nerd Font Mono', ui-monospace, monospace;
+}
+.cookie-title, h1.app-title {
+  font-family: 'Geist Pixel Line', monospace;
+}
