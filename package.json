@@ -9,7 +9,8 @@
   "files": [
     "index.html",
     "vendor",
-    "cli"
+    "cli",
+    "assets"
   ],
   "engines": {
     "node": ">=18"

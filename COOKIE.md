@@ -8,6 +8,7 @@ Fleet fork of braedonsaunders/codeflow for Chronillogical-Potato / Cookie Monste
 - **GitHub URL paste / `api.github.com` disabled** (`window.COOKIE_CODEFLOW_LOCAL_ONLY = true`).
 - Shem downloads forks locally; do not paste remote GitHub URLs as the primary workflow.
 - **No Vercel.** Do not point fleet at `codeflow-five.vercel.app`.
+- **UI:** the old GitHub URL slot shows the local folder being mapped (read-only; full path in CLI mode, folder/ZIP name for browser Open Folder / Open ZIP). Analyze, auth selector, token/App inputs and GitHub-ZIP buttons are not rendered; `.cookie-hide-github` on `<html>` also hides them via CSS. Deep links `?repo=…&run=1` show the local-only refusal toast.
 - Obscure opt-in only: `window.COOKIE_CODEFLOW_ALLOW_GITHUB = true` in the browser console (not exposed in UI). Prefer leaving it off.
 
 ## Assets
