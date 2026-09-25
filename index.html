@@ -198,15 +198,15 @@ body{font-family:'Fira Code Nerd Font Propo',system-ui,sans-serif;background:var
 .security-header{display:flex;align-items:center;gap:8px;margin-bottom:6px}
 .security-title{font-size:11px;color:var(--t0);font-weight:500}
 .security-desc{font-size:10px;color:var(--t2);margin-bottom:6px;line-height:1.4}
-.security-path{font-size:9px;color:var(--t3);font-family:monospace}
+.security-path{font-size:9px;color:var(--t3);font-family:'Fira Code Nerd Font Mono',ui-monospace,monospace}
 .security-line{font-size:9px;color:var(--acc);margin-top:4px}
-.security-code{font-size:9px;background:var(--bg3);padding:6px 8px;border-radius:4px;margin-top:6px;font-family:monospace;color:var(--orange);overflow-x:auto;white-space:pre}
+.security-code{font-size:9px;background:var(--bg3);padding:6px 8px;border-radius:4px;margin-top:6px;font-family:'Fira Code Nerd Font Mono',ui-monospace,monospace;color:var(--orange);overflow-x:auto;white-space:pre}
 .fn-item{background:var(--bg0);border-radius:6px;margin-bottom:6px;overflow:hidden}
 .fn-header{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;cursor:pointer}
 .fn-header:hover{background:var(--hover)}
-.fn-name{color:var(--cyan);font-size:10px;font-family:monospace}
+.fn-name{color:var(--cyan);font-size:10px;font-family:'Fira Code Nerd Font Mono',ui-monospace,monospace}
 .fn-line{font-size:9px;color:var(--t3)}
-.fn-code{font-size:9px;background:var(--bg3);padding:8px;font-family:monospace;color:var(--t1);overflow-x:auto;white-space:pre;max-height:150px;overflow-y:auto;border-top:1px solid var(--border2)}
+.fn-code{font-size:9px;background:var(--bg3);padding:8px;font-family:'Fira Code Nerd Font Mono',ui-monospace,monospace;color:var(--t1);overflow-x:auto;white-space:pre;max-height:150px;overflow-y:auto;border-top:1px solid var(--border2)}
 .blast-detail{margin-top:8px;padding-top:8px;border-top:1px solid var(--border2)}
 .blast-file{display:flex;align-items:center;gap:6px;font-size:9px;color:var(--t2);padding:3px 0}
 .blast-file:hover{color:var(--acc);cursor:pointer}
@@ -770,14 +770,26 @@ body{height:100dvh;min-height:100dvh}
 }
     
 /* Cookie local-only: hide GitHub URL paste / auth / Analyze remote by default */
-.cookie-hide-github .repo-input,
+.cookie-hide-github input[aria-label='Repository URL'],
 .cookie-hide-github #analyze-btn,
+.cookie-hide-github #mobile-analyze-btn,
 .cookie-hide-github .auth-inputs,
-.cookie-hide-github select[aria-label='Auth method'],
+.cookie-hide-github .auth-select,
+.cookie-hide-github select[aria-label='Authentication Method'],
 .cookie-hide-github button[aria-label='Download GitHub ZIP'],
 .cookie-hide-github button[aria-label='Set Private Key'] {
   display: none !important;
 }
+/* Cookie: the old GitHub URL slot now shows the local folder being mapped (read-only). */
+.repo-input.cookie-local-path {
+  font-family: 'Fira Code Nerd Font Mono', ui-monospace, monospace;
+  cursor: default;
+  color: var(--t1, #c9d1d9);
+  background: var(--bg1, transparent);
+  text-overflow: ellipsis;
+}
+.repo-input.cookie-local-path:placeholder-shown { font-family: 'Fira Code Nerd Font Propo', system-ui, sans-serif; }
+.tool-btn, .refresh-btn, .reset-btn { font-family: 'Fira Code Nerd Font Propo', system-ui, sans-serif; }
 .cookie-local-banner {
   font-family: 'Fira Code Nerd Font Propo', system-ui, sans-serif;
   font-size: 12px;
@@ -815,6 +827,7 @@ const LAYER_COLORS={ui:'#4d9fff',components:'#22d3ee',services:'#a78bfa',utils:'
 /* Cookie fleet: local folder / ZIP / CLI only. GitHub URL + api.github.com disabled by default. */
 window.COOKIE_CODEFLOW_LOCAL_ONLY = true;
 window.COOKIE_CODEFLOW_ALLOW_GITHUB = false;
+document.documentElement.classList.toggle('cookie-hide-github', !!(window.COOKIE_CODEFLOW_LOCAL_ONLY && !window.COOKIE_CODEFLOW_ALLOW_GITHUB));
 
 /* Obscure opt-in (Shem only): window.COOKIE_CODEFLOW_ALLOW_GITHUB = true; then confirm.
    Prefer never enabling — download forks and use Open Folder. */
@@ -10019,7 +10032,8 @@ function App(){
         if(repo&&repo.length<200&&!repo.includes('{')&&/^[a-zA-Z0-9_.\/-]+$/.test(repo)){
             setRepoUrl(repo);
             if(shouldAutoRun){
-                setTimeout(function(){var btn=document.getElementById('analyze-btn');if(btn)btn.click();},500);
+                /* Cookie local-only: there is no Analyze button; analyze() shows the refusal toast. */
+                setTimeout(function(){var btn=document.getElementById('analyze-btn');if(btn)btn.click();else analyze(false,repo);},500);
             }
         }
         refreshRecentList();
@@ -13834,6 +13848,17 @@ function App(){
         navigator.clipboard.writeText(shareUrl).then(function(){showNotification('Link copied to clipboard!');}).catch(function(){showNotification('Failed to copy link','error');});
     }
     function analyzePR(){if(!prUrl||!repoInfo)return;var m=prUrl.match(/\/pull\/(\d+)/);if(!m){showNotification('Invalid PR URL','error');return;}GitHub.getPR(repoInfo.owner,repoInfo.repo,m[1]).then(function(pr){if(pr)setPrData(pr);else showNotification('Could not load PR','error');});}
+    /* Cookie local-only: the GitHub URL slot displays the local folder being mapped (read-only). */
+    var cookieLocalOnly=!!(window.COOKIE_CODEFLOW_LOCAL_ONLY&&!window.COOKIE_CODEFLOW_ALLOW_GITHUB);
+    var cookieLocalPath=(function(){
+        if(localSourceKind==='cli'||(!localSourceKind&&!data&&cliStatus&&cliStatus.ok))return (repoInfo&&repoInfo.cliRoot)||(cliStatus&&cliStatus.root)||'';
+        if(localSourceKind==='folder')return repoInfo&&repoInfo.name?repoInfo.name+'/  (folder picked in browser)':'';
+        if(localSourceKind==='zip')return repoInfo&&repoInfo.name?repoInfo.name+'  (ZIP archive)':'';
+        return '';
+    })();
+    function cookieLocalPathField(){
+        return React.createElement('input',{className:'repo-input cookie-local-path','aria-label':'Local folder path',readOnly:true,value:cookieLocalPath,title:cookieLocalPath||'No local folder loaded',placeholder:'Local folder: use Open Folder / Open ZIP, or run the CLI in a folder'});
+    }
     function resetAnalysis(){setData(null);setSelected(null);setBlastRadius(null);setOwnership(null);setRepoInfo(null);setRepoUrl('');setPrData(null);setFolderFilter(null);setLocalDirHandle(null);setLocalSourceKind(null);setArchitectureIncludeTests(false);setArchitectureIncludeBuildOutput(false);setCachedFromId(null);setActiveSymbol(null);setCliDirty([]);clearCliLiveDiffs();localFolderKeyRef.current=null;localFolderSelectionRef.current=null;localFilesRef.current=null;zipKeyRef.current=null;zipArchiveRef.current=null;zipFileRef.current=null;window.history.replaceState({},'',window.location.pathname);}
     function filterByFolder(path){setFolderFilter(function(prev){return prev===path?null:path;});}
     function renderRecentsList(){
@@ -14451,18 +14476,18 @@ function App(){
                 ),
                 React.createElement('div',{className:'mobile-source-controls'},
                     React.createElement('div',{className:'mobile-primary-row'},
-                        React.createElement('input',{className:'repo-input','aria-label':'Repository URL',placeholder:'owner/repo or GitHub URL',value:repoUrl,onChange:function(e){setRepoUrl(e.target.value);},onKeyDown:function(e){if(e.key==='Enter'&&!loading)analyze();}}),
-                        React.createElement('button',{id:'mobile-analyze-btn',className:'top-btn primary mobile-analyze-btn','aria-label':'Analyze repository',title:'Analyze',onClick:analyze,disabled:loading||!repoUrl,type:'button'},
+                        cookieLocalOnly?cookieLocalPathField():React.createElement('input',{className:'repo-input','aria-label':'Repository URL',placeholder:'owner/repo or GitHub URL',value:repoUrl,onChange:function(e){setRepoUrl(e.target.value);},onKeyDown:function(e){if(e.key==='Enter'&&!loading)analyze();}}),
+                        !cookieLocalOnly&&React.createElement('button',{id:'mobile-analyze-btn',className:'top-btn primary mobile-analyze-btn','aria-label':'Analyze repository',title:'Analyze',onClick:analyze,disabled:loading||!repoUrl,type:'button'},
                             React.createElement(Icon,{name:loading?'activity':'search',size:'m'})
                         )
                     ),
                     React.createElement('div',{className:'mobile-secondary-row'},
-                        React.createElement('select',{className:'auth-select','aria-label':'Authentication Method',value:authMethod,onChange:function(e){setAuthMethod(e.target.value);}},
+                        !cookieLocalOnly&&React.createElement('select',{className:'auth-select','aria-label':'Authentication Method',value:authMethod,onChange:function(e){setAuthMethod(e.target.value);}},
                             React.createElement('option',{value:'none'},'No Auth'),
                             React.createElement('option',{value:'pat'},'Token'),
                             React.createElement('option',{value:'github_app'},'App')
                         ),
-                        React.createElement('div',{className:'auth-inputs'},
+                        !cookieLocalOnly&&React.createElement('div',{className:'auth-inputs'},
                             authMethod==='pat'&&React.createElement('input',{className:'repo-input',type:'password','aria-label':'GitHub Token',placeholder:'Personal Access Token',value:token,onChange:function(e){setToken(e.target.value);},onKeyDown:function(e){if(e.key==='Enter'&&!loading)analyze();}}),
                             authMethod==='github_app'&&React.createElement(React.Fragment,null,
                                 React.createElement('input',{className:'repo-input','aria-label':'App ID',placeholder:'App ID',value:appId,onChange:function(e){setAppId(e.target.value);},onKeyDown:function(e){if(e.key==='Enter'&&!loading)analyze();}}),
@@ -14485,7 +14510,7 @@ function App(){
                             React.createElement(Icon,{name:'archive',size:'m'}),
                             'ZIP'
                         ),
-                        parseUrl(repoUrl)&&React.createElement('button',{className:'top-btn','aria-label':'Download GitHub ZIP',onClick:downloadCurrentGithubZip,disabled:loading,type:'button'},
+                        !cookieLocalOnly&&parseUrl(repoUrl)&&React.createElement('button',{className:'top-btn','aria-label':'Download GitHub ZIP',onClick:downloadCurrentGithubZip,disabled:loading,type:'button'},
                             React.createElement(Icon,{name:'export',size:'m'}),
                             'ZIP URL'
                         ),
@@ -14505,13 +14530,13 @@ function App(){
                 React.createElement('span',{className:'logo-text'},'CODEFLOW')
             ),
             React.createElement('div',{className:'repo-input-group'},
-                React.createElement('input',{className:'repo-input','aria-label':'Repository URL',placeholder:'owner/repo or GitHub URL',value:repoUrl,onChange:function(e){setRepoUrl(e.target.value);},onKeyDown:function(e){if(e.key==='Enter'&&!loading)analyze();}}),
-                React.createElement('select',{className:'auth-select','aria-label':'Authentication Method',value:authMethod,onChange:function(e){setAuthMethod(e.target.value);}},
+                cookieLocalOnly?cookieLocalPathField():React.createElement('input',{className:'repo-input','aria-label':'Repository URL',placeholder:'owner/repo or GitHub URL',value:repoUrl,onChange:function(e){setRepoUrl(e.target.value);},onKeyDown:function(e){if(e.key==='Enter'&&!loading)analyze();}}),
+                !cookieLocalOnly&&React.createElement('select',{className:'auth-select','aria-label':'Authentication Method',value:authMethod,onChange:function(e){setAuthMethod(e.target.value);}},
                     React.createElement('option',{value:'none'},'No Auth'),
                     React.createElement('option',{value:'pat'},'Token (PAT)'),
                     React.createElement('option',{value:'github_app'},'GitHub App')
                 ),
-                React.createElement('div',{className:'auth-inputs'},
+                !cookieLocalOnly&&React.createElement('div',{className:'auth-inputs'},
                     authMethod==='pat'&&React.createElement('input',{className:'repo-input',type:'password','aria-label':'GitHub Token',placeholder:'Personal Access Token',value:token,onChange:function(e){setToken(e.target.value);},onKeyDown:function(e){if(e.key==='Enter'&&!loading)analyze();},style:{minWidth:140}}),
                     authMethod==='github_app'&&React.createElement(React.Fragment,null,
                         React.createElement('input',{className:'repo-input','aria-label':'App ID',placeholder:'App ID',value:appId,onChange:function(e){setAppId(e.target.value);},onKeyDown:function(e){if(e.key==='Enter'&&!loading)analyze();},style:{width:80}}),
@@ -14526,7 +14551,7 @@ function App(){
                     !data&&'Excludes',
                     (!data&&customExcludeCount>0)?' ('+customExcludeCount+')':''
                 ),
-                React.createElement('button',{id:'analyze-btn',className:'top-btn primary','aria-label':'Analyze repository',title:'Analyze repository',onClick:analyze,disabled:loading||!repoUrl},
+                !cookieLocalOnly&&React.createElement('button',{id:'analyze-btn',className:'top-btn primary','aria-label':'Analyze repository',title:'Analyze repository',onClick:analyze,disabled:loading||!repoUrl},
                     React.createElement(Icon,{name:loading?'activity':'search',size:'m'}),
                     !data&&'Analyze'
                 ),
@@ -14538,7 +14563,7 @@ function App(){
                     React.createElement(Icon,{name:'archive',size:'m'}),
                     !data&&'Open ZIP'
                 ),
-                parseUrl(repoUrl)&&React.createElement('button',{className:'top-btn','aria-label':'Download GitHub ZIP',title:'Download a ZIP of this repo, then open it here',onClick:downloadCurrentGithubZip,disabled:loading},
+                !cookieLocalOnly&&parseUrl(repoUrl)&&React.createElement('button',{className:'top-btn','aria-label':'Download GitHub ZIP',title:'Download a ZIP of this repo, then open it here',onClick:downloadCurrentGithubZip,disabled:loading},
                     React.createElement(Icon,{name:'export',size:'m'}),
                     !data&&'Download ZIP'
                 ),
@@ -15354,7 +15379,7 @@ function App(){
                     ),
                     React.createElement('div',{className:'privacy-item'},
                         React.createElement('div',{className:'privacy-icon'},React.createElement(Icon,{name:'share',size:'l'})),
-                        React.createElement('div',null,React.createElement('div',{className:'privacy-title'},'Direct API Calls'),React.createElement('div',{className:'privacy-text'},'All GitHub API calls go directly from your browser to api.github.com. We have no proxy, no middleware, no way to intercept your data.'))
+                        React.createElement('div',null,React.createElement('div',{className:'privacy-title'},'Local Only'),React.createElement('div',{className:'privacy-text'},'Cookie build: analysis reads a local folder, ZIP, or the local CLI on 127.0.0.1. GitHub URL mode and api.github.com calls are disabled.'))
                     ),
                     React.createElement('div',{className:'privacy-item'},
                         React.createElement('div',{className:'privacy-icon'},React.createElement(Icon,{name:'ban',size:'l'})),
